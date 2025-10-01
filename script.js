@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let links = initialData ? initialData.links : [];
     let nextNodeId = initialData ? initialData.nextNodeId : 2;
     let selectedNode = null;
+    let nodeToEditOnCreation = null;
 
     // --- D3 Force Simulation ---
     const simulation = d3.forceSimulation(nodes)
@@ -179,6 +180,15 @@ document.addEventListener('DOMContentLoaded', () => {
         simulation.alpha(1).restart();
 
         saveData();
+
+        // After update, check if a new node should be edited
+        if (nodeToEditOnCreation) {
+            const newNodeGroup = nodeGroup.select(`.node-group[data-id='${nodeToEditOnCreation}']`);
+            if (!newNodeGroup.empty()) {
+                showEditor(newNodeGroup);
+            }
+            nodeToEditOnCreation = null; // Reset the flag
+        }
     }
 
     // --- Selection ---
@@ -202,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nodes.push(newNode);
         links.push({ source: d.id, target: newNode.id });
         selectNode(newNode); // Select the new node
+        nodeToEditOnCreation = newNode.id; // Flag this node for editing after creation
         update();
     }
 
@@ -243,18 +254,63 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Render ---
     update();
 
+    // --- Inline Editor Functions ---
+    function showEditor(nodeGroup) {
+        if (nodeGroup.empty() || nodeGroup.select('foreignObject').node()) return;
+        const d = nodeGroup.datum();
+
+        nodeGroup.select('text').style('visibility', 'hidden');
+
+        const foreignObject = nodeGroup.append('foreignObject')
+            .attr('x', -nodeWidth / 2)
+            .attr('y', -nodeHeight / 2)
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight);
+
+        const textarea = foreignObject.append('xhtml:textarea')
+            .attr('class', 'foreign-object-input')
+            .text(d.name)
+            .on('blur', function() {
+                // On blur, update the name and remove the editor
+                d.name = this.value.trim();
+                hideEditor(nodeGroup);
+            })
+            .on('keydown', function(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    this.blur(); // Trigger blur to save and hide
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    // To cancel, restore original text and then blur
+                    this.value = d.name;
+                    this.blur();
+                }
+            });
+
+        textarea.node().focus();
+        textarea.node().select();
+    }
+
+    function hideEditor(nodeGroup) {
+        nodeGroup.select('foreignObject').remove();
+        nodeGroup.select('text').style('visibility', 'visible');
+        update(); // This will re-wrap text and save data
+    }
+
     // --- Keyboard Handlers ---
     d3.select(window).on('keydown', (event) => {
         if (!selectedNode) return;
 
+        // Do not trigger other shortcuts if an editor is active
+        if (d3.select('.foreign-object-input').node()) {
+            return;
+        }
+
         switch (event.key) {
             case 'Enter':
-                event.preventDefault(); // Prevent form submission or other default behavior
-                const newName = prompt('新しいノード名を入力してください:', selectedNode.name);
-                if (newName !== null && newName.trim() !== '') {
-                    selectedNode.name = newName.trim();
-                    update();
-                }
+                event.preventDefault();
+                showEditor(d3.select(`.node-group[data-id='${selectedNode.id}']`));
                 break;
 
             case 'Delete':
