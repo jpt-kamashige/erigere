@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const width = +svg.node().getBoundingClientRect().width;
     const height = +svg.node().getBoundingClientRect().height;
 
+    const nodeWidth = 200;
+    const nodeHeight = 80;
+
     // --- Local Storage ---
     const STORAGE_KEY = 'mindmap-data';
 
@@ -52,8 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- D3 Force Simulation ---
     const simulation = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).id(d => d.id).distance(100))
-        .force("charge", d3.forceManyBody().strength(-400))
+        .force("link", d3.forceLink(links).id(d => d.id).distance(300))
+        .force("charge", d3.forceManyBody().strength(-1500))
         .force("center", d3.forceCenter(width / 2, height / 2))
         .on("tick", ticked);
 
@@ -66,6 +69,60 @@ document.addEventListener('DOMContentLoaded', () => {
         selectNode(null);
     });
 
+    function wrapText(selection, width) {
+        selection.each(function() {
+            const text = d3.select(this);
+            const fullText = text.text();
+            const chars = fullText.split('');
+            let line = '';
+            let lines = [];
+            const lineHeight = 1.1; // ems
+            const maxLines = 2;
+
+            // Use a temporary tspan to measure text width as we build it
+            let tspan = text.text(null).append("tspan");
+
+            for (let i = 0; i < chars.length; i++) {
+                const testLine = line + chars[i];
+                tspan.text(testLine);
+                if (tspan.node().getComputedTextLength() > width && line.length > 0) {
+                    lines.push(line);
+                    line = chars[i];
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+            tspan.remove();
+
+            // Truncate lines if necessary
+            if (lines.length > maxLines) {
+                const firstLine = lines[0];
+                let secondLine = lines[1];
+
+                let tempTspan = text.append("tspan").text(secondLine + "...");
+                while (tempTspan.node().getComputedTextLength() > width && secondLine.length > 0) {
+                    secondLine = secondLine.slice(0, -1);
+                    tempTspan.text(secondLine.trim() + "...");
+                }
+                lines = [firstLine, tempTspan.text()];
+                tempTspan.remove();
+            }
+
+            // Now render the final lines
+            text.text(null);
+            const numLines = lines.length;
+            const startDy = -((numLines - 1) / 2) * lineHeight;
+
+            for (let i = 0; i < numLines; i++) {
+                text.append("tspan")
+                    .attr("x", 0)
+                    .attr("dy", (i === 0 ? startDy : lineHeight) + "em")
+                    .text(lines[i]);
+            }
+        });
+    }
+
     // --- Update Function ---
     function update() {
         // Nodes
@@ -73,24 +130,33 @@ document.addEventListener('DOMContentLoaded', () => {
             .data(nodes, d => d.id)
             .join(
                 enter => {
-                    const nodeGroup = enter.append("g").attr("class", "node-group");
+                    const nodeGroup = enter.append("g")
+                        .attr("class", "node-group")
+                        .attr("data-id", d => d.id);
 
-                    nodeGroup.append("circle")
-                        .attr("r", 20)
-                        .attr("fill", "#aef")
-                        .attr("class", "node");
+                    nodeGroup.append("rect")
+                        .attr("class", "node")
+                        .attr("width", nodeWidth)
+                        .attr("height", nodeHeight)
+                        .attr("x", -nodeWidth / 2)
+                        .attr("y", -nodeHeight / 2)
+                        .attr("rx", 10)
+                        .attr("fill", "#aef");
 
-                    nodeGroup.append("text")
-                        .text(d => d.name)
-                        .attr("dy", "0.35em");
+                    nodeGroup.append("text"); // Append empty text, wrapText will handle it
 
                     return nodeGroup;
                 },
                 update => { // Handle text updates
-                    update.select('text').text(d => d.name);
+                    // No need to do anything here, will be handled below
                     return update;
                 }
             );
+
+        // Update text content and apply wrapping for both enter and update selections
+        nodeElements.select('text')
+            .text(d => d.name)
+            .call(wrapText, nodeWidth - 20); // Apply wrap with padding
 
         // Apply handlers
         nodeElements
@@ -118,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Selection ---
     function selectNode(node) {
         selectedNode = node;
-        nodeGroup.selectAll('circle.node')
+        nodeGroup.selectAll('rect.node')
             .classed('selected', d => selectedNode && d.id === selectedNode.id);
     }
 
