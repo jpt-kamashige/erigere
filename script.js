@@ -191,6 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Handlers & Dragging ---
     function handleDblClick(event, d) {
         event.stopPropagation(); // Stop propagation to avoid triggering other events like drag
+
+        // Fix the position of all existing nodes to prevent them from moving
+        nodes.forEach(node => {
+            node.fx = node.x;
+            node.fy = node.y;
+        });
+
         const newNode = { id: nextNodeId++, name: '新しいノード', x: d.x, y: d.y };
         nodes.push(newNode);
         links.push({ source: d.id, target: newNode.id });
@@ -216,8 +223,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function dragended(event, d) {
         if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
+        // Keep the node fixed at its position after dragging
+        d.fx = d.x;
+        d.fy = d.y;
     }
 
     // --- Ticked Function ---
