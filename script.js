@@ -169,9 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 .on("end", dragended));
 
         // Links
-        const linkElements = linkGroup.selectAll("line.link")
+        const linkElements = linkGroup.selectAll("path.link")
             .data(links, d => `${d.source.id}-${d.target.id}`)
-            .join("line")
+            .join("path")
             .attr("class", "link");
 
         // Restart simulation
@@ -208,7 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
             node.fy = node.y;
         });
 
-        const newNode = { id: nextNodeId++, name: '新しいノード', x: d.x, y: d.y };
+        // Add a slight offset to the new node's position to kickstart the force simulation
+        const newNode = { id: nextNodeId++, name: '新しいノード', x: d.x + 1, y: d.y + 1 };
         nodes.push(newNode);
         links.push({ source: d.id, target: newNode.id });
         selectNode(newNode); // Select the new node
@@ -241,11 +242,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Ticked Function ---
     function ticked() {
-        linkGroup.selectAll("line.link")
-            .attr("x1", d => d.source.x)
-            .attr("y1", d => d.source.y)
-            .attr("x2", d => d.target.x)
-            .attr("y2", d => d.target.y);
+        linkGroup.selectAll("path.link")
+            .attr("d", d => {
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                // This creates a cubic bezier curve.
+                const path = `M ${d.source.x},${d.source.y} C ${d.source.x + dx / 2},${d.source.y} ${d.source.x + dx / 2},${d.target.y} ${d.target.x},${d.target.y}`;
+                return path;
+            });
 
         nodeGroup.selectAll("g.node-group")
             .attr("transform", d => `translate(${d.x},${d.y})`);
