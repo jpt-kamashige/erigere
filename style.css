@@ -1,0 +1,34 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: sans-serif;
+}
+
+#mindmap-canvas {
+    width: 100vw;
+    height: 100vh;
+}
+
+.node {
+    cursor: pointer;
+    stroke: #333;
+    stroke-width: 1.5px;
+}
+
+.node.selected {
+    stroke: orange;
+    stroke-width: 3px;
+}
+
+.link {
+    stroke: #999;
+    stroke-opacity: 0.6;
+    stroke-width: 1.5px;
+}
+
+text {
+    font-size: 12px;
+    pointer-events: none; /* テキストがマウスイベントを妨げないようにする */
+    text-anchor: middle;
+    alignment-baseline: middle;
+}
