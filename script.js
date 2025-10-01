@@ -208,8 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
             node.fy = node.y;
         });
 
-        // Add a slight offset to the new node's position to kickstart the force simulation
-        const newNode = { id: nextNodeId++, name: '新しいノード', x: d.x + 1, y: d.y + 1 };
+        // Set the new node's initial position further away to prevent overlap
+        const newNode = { id: nextNodeId++, name: '新しいノード', x: d.x + 100, y: d.y + 100 };
         nodes.push(newNode);
         links.push({ source: d.id, target: newNode.id });
         selectNode(newNode); // Select the new node
