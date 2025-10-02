@@ -246,8 +246,20 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr("d", d => {
                 const dx = d.target.x - d.source.x;
                 const dy = d.target.y - d.source.y;
-                // This creates a cubic bezier curve.
-                const path = `M ${d.source.x},${d.source.y} C ${d.source.x + dx / 2},${d.source.y} ${d.source.x + dx / 2},${d.target.y} ${d.target.x},${d.target.y}`;
+
+                // A bend factor to make the curve more pronounced.
+                // 0 is a C-shape, higher values create a more S-like curve.
+                const bendFactor = 0.3;
+
+                const midX = d.source.x + dx / 2;
+                const midY = d.source.y + dy / 2;
+
+                const c1x = midX - dy * bendFactor;
+                const c1y = midY + dx * bendFactor;
+                const c2x = midX + dy * bendFactor;
+                const c2y = midY - dx * bendFactor;
+
+                const path = `M ${d.source.x},${d.source.y} C ${c1x},${c1y} ${c2x},${c2y} ${d.target.x},${d.target.y}`;
                 return path;
             });
 
